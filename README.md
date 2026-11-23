@@ -8,7 +8,7 @@ Make camera photos web-ready with a right-click: select images in Explorer, righ
 **ImageOptimizer**. A window lists the images; pick a preset and click **Optimize**. Results go to a `web`
 subfolder next to the originals, which stay untouched.
 
-A free tool by OSULZER for Windows.
+A free tool by OSULZER for Windows, macOS and Linux.
 
 ## Features
 
@@ -38,6 +38,28 @@ A free tool by OSULZER for Windows.
 On Windows 11 the entry is under **Show more options** (or Shift + right-click).
 
 Uninstall via Windows **Settings → Apps**; you will be asked whether to keep your settings.
+
+### macOS
+
+1. Download `osulzer-imageoptimizer-macos.zip` (Intel and Apple Silicon) and unzip it.
+2. The app is not notarized by Apple. On first start macOS blocks it: open **System Settings → Privacy &
+   Security** and click **Open Anyway** next to the message about ImageOptimizer.
+3. Accept **Install**: the app moves to `~/Applications` and adds the Finder Quick Action
+   (right-click images → **Quick Actions → ImageOptimizer**).
+
+Dragging images onto the window works too. Uninstall under **Settings → General**.
+
+### Linux
+
+1. Download `osulzer-imageoptimizer-linux-x86_64.tar.gz` (or `-arm64`) and unpack it.
+2. Start `./osulzer-imageoptimizer-linux-x86_64` and accept **Install**: the program goes to
+   `~/.local/share/OSULZER/ImageOptimizer`, adds an application-menu entry, **Open with** for images in every
+   file manager, a right-click entry in Dolphin, Nautilus (**Scripts**) and Nemo, and the command
+   `osulzer-imageoptimizer` in `~/.local/bin`.
+
+Storing API keys needs a Secret Service (GNOME Keyring or KWallet). Uninstall under **Settings → General**.
+
+Updates are checked once a day on all systems and only installed when their signature is valid.
 
 ## AI description
 

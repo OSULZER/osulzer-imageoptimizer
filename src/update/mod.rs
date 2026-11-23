@@ -26,8 +26,21 @@ pub fn wait_for_previous_instance() {
             CloseHandle(handle);
         }
     }
+    // `kill -0` prüft nur, ob der Prozess noch lebt; gibt es den Befehl nicht, wird nicht gewartet.
     #[cfg(not(windows))]
-    let _ = pid;
+    {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+        let alive = || {
+            std::process::Command::new("kill")
+                .args(["-0", &pid.to_string()])
+                .stderr(std::process::Stdio::null())
+                .status()
+                .is_ok_and(|s| s.success())
+        };
+        while std::time::Instant::now() < deadline && alive() {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+    }
 }
 
 /// Aktuelle Zeit in Unix-Sekunden.

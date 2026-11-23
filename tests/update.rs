@@ -1,15 +1,32 @@
 mod common;
 
-use osulzer_imageoptimizer::update::check::{Release, download_verified, due, fetch_latest, newer_release, parse_version, signed_message};
+use osulzer_imageoptimizer::update::check::{EXE_NAME, Release, download_verified, due, fetch_latest, newer_release, parse_version, signed_message};
 use osulzer_imageoptimizer::update::sign::{generate, sign};
 use osulzer_imageoptimizer::update::swap::{cleanup_old, swap, swap_with};
 
+/// Release mit den Dateien aller Systeme; die URL verrät, welche gewählt wurde.
 fn release_json(tag: &str, with_sig: bool) -> String {
-    let mut assets = vec![serde_json::json!({ "name": "osulzer-imageoptimizer.exe", "browser_download_url": "https://x/exe" })];
-    if with_sig {
-        assets.push(serde_json::json!({ "name": "osulzer-imageoptimizer.exe.sig", "browser_download_url": "https://x/sig" }));
+    let mut assets = Vec::new();
+    for name in ["osulzer-imageoptimizer.exe", "osulzer-imageoptimizer-macos", "osulzer-imageoptimizer-linux-x86_64", "osulzer-imageoptimizer-linux-arm64"] {
+        let own = name == EXE_NAME;
+        let url = |kind: &str| if own { format!("https://x/{kind}") } else { format!("https://x/other-{kind}") };
+        assets.push(serde_json::json!({ "name": name, "browser_download_url": url("exe") }));
+        if with_sig {
+            assets.push(serde_json::json!({ "name": format!("{name}.sig"), "browser_download_url": url("sig") }));
+        }
     }
     serde_json::json!({ "tag_name": tag, "html_url": "https://github.com/OSULZER/osulzer-imageoptimizer/releases/tag/x", "assets": assets }).to_string()
+}
+
+#[test]
+fn release_without_a_file_for_this_system_is_no_update() {
+    let json = serde_json::json!({
+        "tag_name": "v9.0.0",
+        "assets": [{ "name": "osulzer-imageoptimizer-solaris", "browser_download_url": "https://x/exe" },
+                   { "name": "osulzer-imageoptimizer-solaris.sig", "browser_download_url": "https://x/sig" }]
+    })
+    .to_string();
+    assert!(newer_release(&json, "1.0.0").is_none());
 }
 
 #[test]
@@ -65,6 +82,11 @@ fn download_accepts_good_signature() {
     let dest = dir.path().join("neu.exe");
     download_verified(&release(&base), &public, &dest).unwrap();
     assert_eq!(std::fs::read(&dest).unwrap(), b"NEUE-EXE");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        assert_eq!(std::fs::metadata(&dest).unwrap().permissions().mode() & 0o777, 0o755, "muss ausführbar sein");
+    }
 }
 
 #[test]

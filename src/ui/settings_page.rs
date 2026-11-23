@@ -26,6 +26,8 @@ pub struct SettingsOutcome {
     pub check_update: bool,
     /// „Installieren“ wurde gedrückt.
     pub offer_install: bool,
+    /// Das Programm wurde deinstalliert; das Fenster schließt sich.
+    pub uninstalled: bool,
 }
 
 pub struct SettingsPage {
@@ -104,7 +106,12 @@ impl SettingsPage {
 
             ui.label(t("settings.install"));
             if crate::install::is_installed() {
-                ui.label(tf("settings.installed_in", &[("dir", &crate::install::install_dir().display())]));
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(tf("settings.installed_in", &[("dir", &crate::install::install_dir().display())]));
+                    if ui.button(t("install.uninstall")).clicked() && matches!(crate::install::uninstall_with_question(), Some(Ok(()))) {
+                        out.uninstalled = true;
+                    }
+                });
             } else if ui.button(t("install.install")).clicked() {
                 // Beim nächsten Start erneut anbieten bzw. jetzt über den Startdialog.
                 config.install_declined = false;
@@ -125,9 +132,6 @@ impl SettingsPage {
             ui.end_row();
         });
 
-        if !cfg!(windows) {
-            return;
-        }
         ui.add_space(12.0);
         ui.label(egui::RichText::new(t("settings.menu")).strong());
         let mut change = None;

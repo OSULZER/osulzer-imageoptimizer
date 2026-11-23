@@ -225,6 +225,14 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
+    fn everything_else_is_a_file_path_unix() {
+        let got = parse_args(os(&["/home/u/Müller & Söhne/bild 1.jpg", "/mnt/nas/ä.png"])).unwrap();
+        assert_eq!(got, Command::Open(vec![PathBuf::from("/home/u/Müller & Söhne/bild 1.jpg"), PathBuf::from("/mnt/nas/ä.png")]));
+    }
+
+    #[test]
+    #[cfg(windows)]
     fn everything_else_is_a_file_path() {
         let got = parse_args(os(&[r"C:\Fotos\Müller & Söhne\bild 1.jpg", r"\\nas\freigabe\ä.png"])).unwrap();
         assert_eq!(

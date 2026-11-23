@@ -5,6 +5,7 @@ pub mod job;
 pub mod config;
 pub mod instance;
 pub mod shell;
+pub mod desktop;
 pub mod state;
 pub mod ui;
 pub mod cli;

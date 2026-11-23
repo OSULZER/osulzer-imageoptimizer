@@ -22,7 +22,9 @@ pub fn acquire(dir: &Path, name: &str, paths: &[PathBuf]) -> std::io::Result<Rol
     let lock = OpenOptions::new().create(true).truncate(false).write(true).open(dir.join("instance.lock"))?;
     match lock.try_lock() {
         Ok(()) => {
-            let listener = ListenerOptions::new().name(socket_name(name)?).create_sync()?;
+            // Wir halten die Sperre, also läuft keine andere primäre Instanz: Ein Socket, den ein
+            // abgestürzter Prozess unter macOS in /tmp zurückgelassen hat, darf ersetzt werden.
+            let listener = ListenerOptions::new().name(socket_name(name)?).try_overwrite(true).create_sync()?;
             let (tx, rx) = mpsc::channel();
             std::thread::spawn(move || {
                 // Die Sperrdatei bleibt offen, solange dieser Thread lebt, also bis zum Prozessende.

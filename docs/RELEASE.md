@@ -66,9 +66,13 @@ The script stops if it finds LAN addresses, user paths or e-mail addresses.
    git tag v1.0.1
    git push origin v1.0.1
    ```
-4. The workflow checks that the tag matches `Cargo.toml` and that a real key and the secret exist, runs the
-   tests, builds, generates `THIRD-PARTY-LICENSES.html`, signs the exe and publishes the release with
-   `osulzer-imageoptimizer.exe`, `osulzer-imageoptimizer.exe.sig` and `THIRD-PARTY-LICENSES.html`.
+4. The workflow checks that the tag matches `Cargo.toml` and that a real key and the secret exist, then runs
+   the tests and builds on Windows, Linux (x86_64 and arm64) and macOS (universal app), signs the file the
+   updater downloads on each system and publishes the release with:
+   - `osulzer-imageoptimizer.exe` (+ `.sig`)
+   - `osulzer-imageoptimizer-linux-x86_64`, `-linux-arm64` (+ `.sig`, and `.tar.gz` for the first download)
+   - `osulzer-imageoptimizer-macos` (+ `.sig`, the program inside the app) and `osulzer-imageoptimizer-macos.zip`
+   - `THIRD-PARTY-LICENSES.html`
 5. Installed copies see the update within a day (or via **Settings → Check now**).
 
 ## SmartScreen

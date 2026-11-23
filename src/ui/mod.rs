@@ -221,7 +221,7 @@ impl App {
         };
         // Gespeicherte Regeln sollen sichtbar sein, sonst wirken sie unbemerkt auf neue Fotos.
         app.names_open = app.config.name_rules.is_active();
-        if crate::install::should_offer(&app.exe, crate::install::is_installed(), app.config.install_declined, &crate::install::install_dir()) {
+        if crate::install::should_offer(&app.exe, crate::install::is_installed(), app.config.install_declined, &crate::install::installed_exe()) {
             app.dialog = Dialog::Install { error: None };
         }
         if app.config.update_check && crate::update::check::due(app.config.last_update_check, crate::update::now()) {
@@ -663,7 +663,8 @@ impl App {
     fn list(&mut self, ui: &mut egui::Ui) {
         if self.batch.items.is_empty() {
             ui.centered_and_justified(|ui| {
-                ui.label(egui::RichText::new(tf("ui.empty_hint", &[("label", &t("menu.label"))])).size(16.0).color(theme::TEXT_WEAK));
+                let hint = per_os("ui.empty_hint", "ui.empty_hint_mac", "ui.empty_hint_linux");
+                ui.label(egui::RichText::new(tf(hint, &[("label", &t("menu.label"))])).size(16.0).color(theme::TEXT_WEAK));
             });
             return;
         }
@@ -1009,6 +1010,10 @@ impl App {
             if out.check_update {
                 self.check_for_update(true);
             }
+            if out.uninstalled {
+                self.ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                return;
+            }
             if out.offer_install && (self.running() || self.ai_run.is_some()) {
                 self.notice = Some(t("update.busy").to_string());
             } else if out.offer_install {
@@ -1054,9 +1059,11 @@ impl App {
                                 ui.add(egui::Label::new(egui::RichText::new(dir).monospace().color(theme::TEXT_WEAK)).wrap());
                             });
                     });
-                    bullet(ui, t("install.item_menu"));
-                    bullet(ui, t("install.item_start"));
-                    bullet(ui, t("install.item_apps"));
+                    bullet(ui, t(per_os("install.item_menu", "install.item_menu_mac", "install.item_menu_linux")));
+                    bullet(ui, t(per_os("install.item_start", "install.item_start_mac", "install.item_start_linux")));
+                    if cfg!(windows) {
+                        bullet(ui, t("install.item_apps"));
+                    }
                     ui.add_space(6.0);
                     ui.label(egui::RichText::new(t("install.note")).small().color(theme::TEXT_WEAK));
                     if let Some(e) = error {
@@ -1258,6 +1265,17 @@ impl eframe::App for App {
 impl Drop for App {
     fn drop(&mut self) {
         self.save_config();
+    }
+}
+
+/// Textschlüssel je nach System: Windows, macOS, sonst Linux.
+pub(crate) fn per_os(windows: &'static str, mac: &'static str, linux: &'static str) -> &'static str {
+    if cfg!(windows) {
+        windows
+    } else if cfg!(target_os = "macos") {
+        mac
+    } else {
+        linux
     }
 }
 

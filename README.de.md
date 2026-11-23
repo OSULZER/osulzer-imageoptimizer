@@ -95,6 +95,27 @@ Einrichtungsbefehle stehen unter „Einstellungen“ → „Agenten“, z. B.
 
 Unter Windows 11 erscheint der Eintrag unter „Weitere Optionen anzeigen“ bzw. sofort bei Shift+Rechtsklick.
 
+### macOS
+
+1. `osulzer-imageoptimizer-macos.zip` herunterladen (Intel und Apple Silicon) und entpacken.
+2. Die App ist nicht von Apple beglaubigt. Beim ersten Start blockiert macOS sie: unter
+   „Systemeinstellungen → Datenschutz & Sicherheit“ bei der Meldung zu ImageOptimizer „Dennoch öffnen“ klicken.
+3. „Installieren“ bestätigen: Die App zieht nach `~/Applications` und trägt die Schnellaktion im Finder ein
+   (Bilder markieren, Rechtsklick → „Schnellaktionen → ImageOptimizer“).
+
+Bilder lassen sich auch ins Fenster ziehen. Deinstallieren unter „Einstellungen → Allgemein“.
+
+### Linux
+
+1. `osulzer-imageoptimizer-linux-x86_64.tar.gz` (oder `-arm64`) herunterladen und entpacken.
+2. `./osulzer-imageoptimizer-linux-x86_64` starten und „Installieren“ bestätigen: Das Programm kommt nach
+   `~/.local/share/OSULZER/ImageOptimizer`, mit Eintrag im Anwendungsmenü, „Öffnen mit“ für Bilder in allen
+   Dateimanagern, Rechtsklick-Eintrag in Dolphin, Nautilus („Skripte“) und Nemo sowie dem Befehl
+   `osulzer-imageoptimizer` in `~/.local/bin`.
+
+Zum Speichern von API-Schlüsseln braucht es einen Schlüsseldienst (GNOME-Schlüsselbund oder KWallet).
+Deinstallieren unter „Einstellungen → Allgemein“.
+
 Updates: Das Programm prüft beim Start höchstens einmal am Tag bei GitHub, ob es eine neue Version gibt
 (abschaltbar unter „Einstellungen“), und installiert sie nach einem Klick – nur mit gültiger Signatur.
 

@@ -4,6 +4,13 @@ use osulzer_imageoptimizer::settings::{OutFormat, Target};
 use std::cell::RefCell;
 use std::fs;
 use std::path::{Path, PathBuf};
+/// Testpfad unter einem festen Ordner: `C:\x\…` unter Windows, `/x/…` sonst.
+fn x(rel: &str) -> PathBuf {
+    let mut p = PathBuf::from(if cfg!(windows) { r"C:\x" } else { "/x" });
+    p.extend(rel.split('/'));
+    p
+}
+
 
 fn enc(format: OutFormat, data: &[u8]) -> Encoded {
     Encoded { data: data.to_vec(), format, width: 10, height: 10, quality_used: Some(80), note: None, source_untouched: false }
@@ -21,11 +28,11 @@ fn names(dir: &Path) -> Vec<String> {
 
 #[test]
 fn planned_paths_for_all_targets() {
-    let src = Path::new(r"C:\x\IMG 1.png");
-    assert_eq!(planned_path(src, Target::WebSubfolder, OutFormat::Jpeg), PathBuf::from(r"C:\x\web\IMG 1.jpg"));
-    assert_eq!(planned_path(src, Target::Suffix, OutFormat::Jpeg), PathBuf::from(r"C:\x\IMG 1-web.jpg"));
-    assert_eq!(planned_path(src, Target::Replace, OutFormat::Jpeg), PathBuf::from(r"C:\x\IMG 1.jpg"));
-    assert_eq!(planned_path(Path::new(r"C:\x\a.b.tiff"), Target::Suffix, OutFormat::Webp), PathBuf::from(r"C:\x\a.b-web.webp"));
+    let src = &x("IMG 1.png");
+    assert_eq!(planned_path(src, Target::WebSubfolder, OutFormat::Jpeg), x("web/IMG 1.jpg"));
+    assert_eq!(planned_path(src, Target::Suffix, OutFormat::Jpeg), x("IMG 1-web.jpg"));
+    assert_eq!(planned_path(src, Target::Replace, OutFormat::Jpeg), x("IMG 1.jpg"));
+    assert_eq!(planned_path(&x("a.b.tiff"), Target::Suffix, OutFormat::Webp), x("a.b-web.webp"));
 }
 
 #[test]
@@ -281,15 +288,15 @@ use osulzer_imageoptimizer::job::planned_path_named;
 
 #[test]
 fn named_paths_for_all_targets() {
-    let src = Path::new(r"C:\x\IMG 1.png");
+    let src = &x("IMG 1.png");
     let stem = Some("kachelofen-gruen");
-    assert_eq!(planned_path_named(src, Target::WebSubfolder, OutFormat::Jpeg, stem), PathBuf::from(r"C:\x\web\kachelofen-gruen.jpg"));
-    assert_eq!(planned_path_named(src, Target::Suffix, OutFormat::Jpeg, stem), PathBuf::from(r"C:\x\kachelofen-gruen.jpg"));
-    assert_eq!(planned_path_named(src, Target::Replace, OutFormat::Webp, stem), PathBuf::from(r"C:\x\kachelofen-gruen.webp"));
+    assert_eq!(planned_path_named(src, Target::WebSubfolder, OutFormat::Jpeg, stem), x("web/kachelofen-gruen.jpg"));
+    assert_eq!(planned_path_named(src, Target::Suffix, OutFormat::Jpeg, stem), x("kachelofen-gruen.jpg"));
+    assert_eq!(planned_path_named(src, Target::Replace, OutFormat::Webp, stem), x("kachelofen-gruen.webp"));
     // Gleicher Name wie die Quelle oder leer: wie bisher.
-    assert_eq!(planned_path_named(src, Target::Suffix, OutFormat::Jpeg, Some("IMG 1")), PathBuf::from(r"C:\x\IMG 1-web.jpg"));
-    assert_eq!(planned_path_named(src, Target::Suffix, OutFormat::Jpeg, Some("")), PathBuf::from(r"C:\x\IMG 1-web.jpg"));
-    assert_eq!(planned_path_named(src, Target::Suffix, OutFormat::Jpeg, None), PathBuf::from(r"C:\x\IMG 1-web.jpg"));
+    assert_eq!(planned_path_named(src, Target::Suffix, OutFormat::Jpeg, Some("IMG 1")), x("IMG 1-web.jpg"));
+    assert_eq!(planned_path_named(src, Target::Suffix, OutFormat::Jpeg, Some("")), x("IMG 1-web.jpg"));
+    assert_eq!(planned_path_named(src, Target::Suffix, OutFormat::Jpeg, None), x("IMG 1-web.jpg"));
 }
 
 #[test]

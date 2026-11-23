@@ -1,4 +1,5 @@
-//! Eintrag im Explorer-Kontextmenü. Der einzige plattformspezifische Teil des Programms.
+//! Rechtsklick-Eintrag im Dateimanager: Explorer (Windows), Schnellaktion im Finder (macOS),
+//! Anwendungsmenü und Dateimanager-Aktionen (Linux).
 
 use std::path::{Path, PathBuf};
 
@@ -203,7 +204,141 @@ mod imp {
     }
 }
 
-#[cfg(not(windows))]
+/// macOS und Linux: die Dateien aus `crate::desktop` unter einem Basisordner schreiben und lesen.
+/// `base` leer = der echte Ordner des Benutzers, sonst ein Testordner.
+#[cfg(unix)]
+mod imp {
+    use super::*;
+    use crate::desktop::DesktopFile;
+
+    pub const BASE: &str = "";
+
+    #[cfg(target_os = "macos")]
+    fn root(base: &str) -> PathBuf {
+        if !base.is_empty() {
+            return PathBuf::from(base);
+        }
+        directories::BaseDirs::new().map(|d| d.home_dir().join("Library").join("Services")).unwrap_or_else(std::env::temp_dir)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    fn root(base: &str) -> PathBuf {
+        if !base.is_empty() {
+            return PathBuf::from(base);
+        }
+        directories::BaseDirs::new().map(|d| d.data_dir().to_path_buf()).unwrap_or_else(std::env::temp_dir)
+    }
+
+    #[cfg(target_os = "macos")]
+    fn files(exe: &Path, label: &str) -> Vec<DesktopFile> {
+        crate::desktop::mac_workflow_files(exe, label)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    fn files(exe: &Path, label: &str) -> Vec<DesktopFile> {
+        crate::desktop::linux_files(exe, label)
+    }
+
+    /// Die Datei, aus der sich der eingetragene Pfad lesen lässt, und wie.
+    #[cfg(target_os = "macos")]
+    fn registered(base: &str) -> Option<PathBuf> {
+        let doc = std::fs::read_to_string(root(base).join(crate::desktop::MAC_WORKFLOW).join("Contents").join("document.wflow")).ok()?;
+        crate::desktop::mac_registered_exe(&doc)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    fn registered(base: &str) -> Option<PathBuf> {
+        let entry = std::fs::read_to_string(root(base).join("applications").join(format!("{}.desktop", crate::desktop::LINUX_ID))).ok()?;
+        crate::desktop::linux_registered_exe(&entry)
+    }
+
+    pub fn status(base: &str, exe: &Path) -> Registration {
+        match registered(base) {
+            None => Registration::None,
+            Some(p) if p == exe => Registration::Current,
+            Some(p) => Registration::Stale(p),
+        }
+    }
+
+    pub fn register(base: &str, exe: &Path, label: &str) -> std::io::Result<()> {
+        use std::os::unix::fs::PermissionsExt;
+        let root = root(base);
+        for f in files(exe, label) {
+            let path = root.join(&f.path);
+            if let Some(dir) = path.parent() {
+                std::fs::create_dir_all(dir)?;
+            }
+            std::fs::write(&path, &f.content)?;
+            let mode = if f.executable { 0o755 } else { 0o644 };
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(mode))?;
+        }
+        if base.is_empty() {
+            refresh_caches(&root);
+        }
+        Ok(())
+    }
+
+    /// Entfernt nur die eigenen Dateien.
+    pub fn unregister(base: &str) -> std::io::Result<()> {
+        let root = root(base);
+        for f in files(Path::new("/"), "") {
+            match std::fs::remove_file(root.join(&f.path)) {
+                Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e),
+                _ => {}
+            }
+        }
+        #[cfg(target_os = "macos")]
+        {
+            let _ = std::fs::remove_dir(root.join(crate::desktop::MAC_WORKFLOW).join("Contents"));
+            let _ = std::fs::remove_dir(root.join(crate::desktop::MAC_WORKFLOW));
+        }
+        if base.is_empty() {
+            refresh_caches(&root);
+        }
+        Ok(())
+    }
+
+    /// Menüs neu einlesen lassen; fehlen die Werkzeuge, greift die Änderung eben beim nächsten Anmelden.
+    fn refresh_caches(root: &Path) {
+        #[cfg(target_os = "macos")]
+        let _ = (root, std::process::Command::new("/System/Library/CoreServices/pbs").arg("-update").status());
+        #[cfg(not(target_os = "macos"))]
+        let _ = std::process::Command::new("update-desktop-database")
+            .arg(root.join("applications"))
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status();
+    }
+
+    pub fn legacy_registered(_base: &str) -> bool {
+        false
+    }
+
+    pub fn remove_legacy(_base: &str) -> std::io::Result<()> {
+        Ok(())
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn register_status_unregister() {
+            let dir = tempfile::tempdir().unwrap();
+            let base = dir.path().to_str().unwrap();
+            let exe = Path::new("/opt/a b/osulzer-imageoptimizer");
+            assert_eq!(status(base, exe), Registration::None);
+            register(base, exe, "ImageOptimizer").unwrap();
+            assert_eq!(status(base, exe), Registration::Current);
+            assert_eq!(status(base, Path::new("/neu/x")), Registration::Stale(exe.to_path_buf()));
+            unregister(base).unwrap();
+            assert_eq!(status(base, exe), Registration::None);
+            unregister(base).unwrap();
+        }
+    }
+}
+
+#[cfg(not(any(windows, unix)))]
 mod imp {
     use super::*;
 

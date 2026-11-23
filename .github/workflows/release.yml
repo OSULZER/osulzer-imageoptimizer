@@ -8,52 +8,124 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    runs-on: windows-latest
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check signing key and version
+        shell: bash
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          key=$(tr -d '[:space:]' < assets/update-public-key.txt)
+          if [ "$key" = "PLACEHOLDER" ] || [ ${#key} -lt 40 ]; then
+            echo "::error::assets/update-public-key.txt holds no real key. Run 'cargo run --example keygen' first (see docs/RELEASE.md)."
+            exit 1
+          fi
+          if [ -z "$UPDATE_SIGNING_KEY" ]; then echo "::error::Secret UPDATE_SIGNING_KEY is missing."; exit 1; fi
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          if [ "v$version" != "$TAG" ]; then echo "::error::Tag $TAG does not match Cargo.toml version $version."; exit 1; fi
+
+  # Je System bauen, testen und signieren. Signiert wird die Datei, die der Updater herunterlädt.
+  build:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            asset: osulzer-imageoptimizer.exe
+          - os: ubuntu-22.04
+            asset: osulzer-imageoptimizer-linux-x86_64
+          - os: ubuntu-22.04-arm
+            asset: osulzer-imageoptimizer-linux-arm64
+          - os: macos-latest
+            asset: osulzer-imageoptimizer-macos
+    runs-on: ${{ matrix.os }}
+    env:
+      TAG: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v4
       - uses: ilammy/setup-nasm@v1
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
       - uses: Swatinem/rust-cache@v2
-
-      - name: Check signing key and version
-        shell: pwsh
-        run: |
-          $key = (Get-Content assets/update-public-key.txt -Raw).Trim()
-          if ($key -eq 'PLACEHOLDER' -or $key.Length -lt 40) {
-            Write-Error "assets/update-public-key.txt holds no real key. Run 'cargo run --example keygen' first (see docs/RELEASE.md)."
-            exit 1
-          }
-          if (-not $env:UPDATE_SIGNING_KEY) { Write-Error "Secret UPDATE_SIGNING_KEY is missing."; exit 1 }
-          $version = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
-          if ("v$version" -ne $env:TAG) { Write-Error "Tag $env:TAG does not match Cargo.toml version $version."; exit 1 }
-        env:
-          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
-          TAG: ${{ github.ref_name }}
 
       - name: Tests
         run: cargo test --locked
 
-      - name: Build
-        run: cargo build --release --locked
+      - name: Build (Windows, Linux)
+        if: runner.os != 'macOS'
+        shell: bash
+        run: |
+          cargo build --release --locked
+          mkdir -p dist
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cp target/release/osulzer-imageoptimizer.exe "dist/${{ matrix.asset }}"
+          else
+            cp target/release/osulzer-imageoptimizer "dist/${{ matrix.asset }}"
+            chmod 755 "dist/${{ matrix.asset }}"
+            # Zum ersten Herunterladen: Archiv behält das Ausführrecht.
+            tar -C dist -czf "dist/${{ matrix.asset }}.tar.gz" "${{ matrix.asset }}"
+          fi
 
+      - name: Build (macOS universal app)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          cargo build --release --locked --target aarch64-apple-darwin
+          cargo build --release --locked --target x86_64-apple-darwin
+          version="${TAG#v}"
+          app="dist/OSULZER ImageOptimizer.app"
+          mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+          lipo -create -output "$app/Contents/MacOS/osulzer-imageoptimizer" \
+            target/aarch64-apple-darwin/release/osulzer-imageoptimizer \
+            target/x86_64-apple-darwin/release/osulzer-imageoptimizer
+          sed "s/{version}/$version/g" assets/macos/Info.plist > "$app/Contents/Info.plist"
+          iconset=$(mktemp -d)/AppIcon.iconset
+          mkdir -p "$iconset"
+          for s in 16 32 128 256; do
+            sips -z $s $s assets/icon.png --out "$iconset/icon_${s}x${s}.png" > /dev/null
+          done
+          for s in 16 32 128; do
+            sips -z $((s*2)) $((s*2)) assets/icon.png --out "$iconset/icon_${s}x${s}@2x.png" > /dev/null
+          done
+          iconutil -c icns "$iconset" -o "$app/Contents/Resources/AppIcon.icns"
+          # Ohne Apple-Zertifikat: Ad-hoc-Signatur, damit Apple Silicon das Programm überhaupt startet.
+          codesign --force --deep --sign - "$app"
+          cp "$app/Contents/MacOS/osulzer-imageoptimizer" "dist/${{ matrix.asset }}"
+          ditto -c -k --keepParent "$app" "dist/${{ matrix.asset }}.zip"
+          rm -rf "$app"
+
+      - name: Sign
+        shell: bash
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: cargo run --release --locked --example sign -- "dist/${{ matrix.asset }}" "$TAG"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
       - name: Third-party licenses
         run: |
           cargo install cargo-about --locked --features cli
-          cargo about generate about.hbs -o THIRD-PARTY-LICENSES.html
-
-      - name: Sign
-        shell: pwsh
-        run: cargo run --release --locked --example sign -- target/release/osulzer-imageoptimizer.exe $env:TAG
-        env:
-          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
-          TAG: ${{ github.ref_name }}
-
+          cargo about generate about.hbs -o dist/THIRD-PARTY-LICENSES.html
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: |
-            target/release/osulzer-imageoptimizer.exe
-            target/release/osulzer-imageoptimizer.exe.sig
-            THIRD-PARTY-LICENSES.html
+          files: dist/*

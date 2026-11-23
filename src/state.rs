@@ -363,6 +363,13 @@ pub fn format_saving(source: u64, result: u64) -> String {
 mod tests {
     use super::*;
     use crate::settings::{Format, SrcFormat};
+    /// Testpfad unter einem festen Ordner: `C:\x\…` unter Windows, `/x/…` sonst.
+    fn x(rel: &str) -> PathBuf {
+        let mut p = PathBuf::from(if cfg!(windows) { r"C:\x" } else { "/x" });
+        p.extend(rel.split('/'));
+        p
+    }
+
 
     fn probe(bytes: u64) -> Result<Probe, EngineError> {
         Ok(Probe { width: 100, height: 50, bytes, format: SrcFormat::Jpeg, has_alpha: false })
@@ -392,22 +399,22 @@ mod tests {
     #[test]
     fn different_files_get_different_ids() {
         let mut b = Batch::default();
-        let a = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
-        let c = b.add(PathBuf::from(r"C:\x\b.jpg"), probe(1)).unwrap();
+        let a = b.add(x("a.jpg"), probe(1)).unwrap();
+        let c = b.add(x("b.jpg"), probe(1)).unwrap();
         assert_ne!(a, c);
         b.remove(a);
         assert_eq!(b.items.len(), 1);
         assert_eq!(b.items[0].id, c);
         // Nach dem Entfernen darf dieselbe Datei wieder hinzukommen.
-        assert!(b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).is_some());
+        assert!(b.add(x("a.jpg"), probe(1)).is_some());
     }
 
     #[test]
     fn unreadable_file_is_listed_but_not_runnable() {
         crate::i18n::set_lang(crate::i18n::Lang::De);
         let mut b = Batch::default();
-        let ok = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
-        let bad = b.add(PathBuf::from(r"C:\x\b.txt"), Err(EngineError::Unsupported)).unwrap();
+        let ok = b.add(x("a.jpg"), probe(1)).unwrap();
+        let bad = b.add(x("b.txt"), Err(EngineError::Unsupported)).unwrap();
         assert_eq!(b.get(bad).unwrap().probe.as_ref().unwrap_err(), "Kein unterstütztes Bildformat");
         assert_eq!(b.runnable(), vec![ok]);
     }
@@ -415,7 +422,7 @@ mod tests {
     #[test]
     fn runnable_contains_pending_and_failed_only() {
         let mut b = Batch::default();
-        let ids: Vec<u64> = (0..4).map(|i| b.add(PathBuf::from(format!(r"C:\x\{i}.jpg")), probe(1)).unwrap()).collect();
+        let ids: Vec<u64> = (0..4).map(|i| b.add(x(&format!("{i}.jpg")), probe(1)).unwrap()).collect();
         b.get_mut(ids[1]).unwrap().status = Status::Running;
         b.get_mut(ids[2]).unwrap().status = done(1);
         b.get_mut(ids[3]).unwrap().status = Status::Failed("x".into());
@@ -425,8 +432,8 @@ mod tests {
     #[test]
     fn changed_defaults_reopen_only_images_without_own_values() {
         let mut b = Batch::default();
-        let plain = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
-        let own = b.add(PathBuf::from(r"C:\x\b.jpg"), probe(1)).unwrap();
+        let plain = b.add(x("a.jpg"), probe(1)).unwrap();
+        let own = b.add(x("b.jpg"), probe(1)).unwrap();
         b.set_own(own, Some(default_settings()));
         b.get_mut(plain).unwrap().status = done(1);
         b.get_mut(own).unwrap().status = done(1);
@@ -438,7 +445,7 @@ mod tests {
     #[test]
     fn own_values_override_and_reopen() {
         let mut b = Batch::default();
-        let id = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
+        let id = b.add(x("a.jpg"), probe(1)).unwrap();
         let default = default_settings();
         assert_eq!(b.effective(id, &default), &default);
 
@@ -462,9 +469,9 @@ mod tests {
     #[test]
     fn totals_sum_sources_and_finished_results() {
         let mut b = Batch::default();
-        let a = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1000)).unwrap();
-        let c = b.add(PathBuf::from(r"C:\x\b.jpg"), probe(3000)).unwrap();
-        b.add(PathBuf::from(r"C:\x\c.txt"), Err(EngineError::Unsupported)).unwrap();
+        let a = b.add(x("a.jpg"), probe(1000)).unwrap();
+        let c = b.add(x("b.jpg"), probe(3000)).unwrap();
+        b.add(x("c.txt"), Err(EngineError::Unsupported)).unwrap();
         b.get_mut(a).unwrap().status = done(100);
         b.get_mut(c).unwrap().status = Status::Failed("x".into());
         let t = b.totals();
@@ -513,10 +520,10 @@ mod tests {
     #[test]
     fn ai_candidates_skip_unreadable_edited_and_replaced_images() {
         let mut b = Batch::default();
-        let plain = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
-        let edited = b.add(PathBuf::from(r"C:\x\b.jpg"), probe(1)).unwrap();
-        let replaced = b.add(PathBuf::from(r"C:\x\c.jpg"), probe(1)).unwrap();
-        b.add(PathBuf::from(r"C:\x\d.txt"), Err(EngineError::Unsupported)).unwrap();
+        let plain = b.add(x("a.jpg"), probe(1)).unwrap();
+        let edited = b.add(x("b.jpg"), probe(1)).unwrap();
+        let replaced = b.add(x("c.jpg"), probe(1)).unwrap();
+        b.add(x("d.txt"), Err(EngineError::Unsupported)).unwrap();
         b.edit_texts(edited, Some(ai_texts("von Hand")));
         b.finish(replaced, Ok(replaced_outcome()));
         assert_eq!(b.ai_candidates(), vec![plain]);
@@ -525,7 +532,7 @@ mod tests {
     #[test]
     fn ai_result_sets_texts_and_reopens_a_finished_image() {
         let mut b = Batch::default();
-        let id = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
+        let id = b.add(x("a.jpg"), probe(1)).unwrap();
         b.get_mut(id).unwrap().status = done(1);
         b.set_ai_status(id, AiStatus::Running);
         b.ai_finished(id, Ok(ai_texts("KI")));
@@ -539,7 +546,7 @@ mod tests {
     #[test]
     fn ai_result_never_overwrites_hand_edited_texts() {
         let mut b = Batch::default();
-        let id = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
+        let id = b.add(x("a.jpg"), probe(1)).unwrap();
         b.set_ai_status(id, AiStatus::Running);
         b.edit_texts(id, Some(ai_texts("von Hand")));
         b.ai_finished(id, Ok(ai_texts("KI")));
@@ -552,7 +559,7 @@ mod tests {
     #[test]
     fn discarding_texts_makes_the_image_a_candidate_again() {
         let mut b = Batch::default();
-        let id = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
+        let id = b.add(x("a.jpg"), probe(1)).unwrap();
         b.edit_texts(id, Some(ai_texts("von Hand")));
         assert!(b.ai_candidates().is_empty());
         b.get_mut(id).unwrap().status = done(1);
@@ -565,7 +572,7 @@ mod tests {
     #[test]
     fn setting_the_same_texts_again_does_not_reopen() {
         let mut b = Batch::default();
-        let id = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
+        let id = b.add(x("a.jpg"), probe(1)).unwrap();
         b.edit_texts(id, Some(ai_texts("x")));
         b.get_mut(id).unwrap().status = done(1);
         b.edit_texts(id, Some(ai_texts("x")));
@@ -575,7 +582,7 @@ mod tests {
     #[test]
     fn ai_errors_are_kept_and_texts_stay() {
         let mut b = Batch::default();
-        let id = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
+        let id = b.add(x("a.jpg"), probe(1)).unwrap();
         b.ai_finished(id, Ok(ai_texts("erste")));
         b.ai_finished(id, Err("KI nicht erreichbar".into()));
         let item = b.get(id).unwrap();
@@ -587,15 +594,15 @@ mod tests {
     fn planned_outputs_use_the_ai_file_name() {
         use crate::settings::Target;
         let mut b = Batch::default();
-        let plain = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
-        let named = b.add(PathBuf::from(r"C:\x\b.png"), probe(1)).unwrap();
+        let plain = b.add(x("a.jpg"), probe(1)).unwrap();
+        let named = b.add(x("b.png"), probe(1)).unwrap();
         b.edit_texts(named, Some(ai_texts("x")));
         let planned = b.planned_outputs(&default_settings(), Target::Suffix, &crate::naming::NameRules::default(), crate::i18n::Lang::De);
         assert_eq!(
             planned,
             vec![
-                (plain, PathBuf::from(r"C:\x\a.jpg"), PathBuf::from(r"C:\x\a-web.jpg")),
-                (named, PathBuf::from(r"C:\x\b.png"), PathBuf::from(r"C:\x\ofen.jpg")),
+                (plain, x("a.jpg"), x("a-web.jpg")),
+                (named, x("b.png"), x("ofen.jpg")),
             ]
         );
     }
@@ -608,9 +615,9 @@ mod tests {
     fn uniform_names_are_numbered_in_list_order_skipping_unreadable() {
         use crate::i18n::Lang;
         let mut b = Batch::default();
-        let a = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
-        let bad = b.add(PathBuf::from(r"C:\x\b.txt"), Err(EngineError::Unsupported)).unwrap();
-        let c = b.add(PathBuf::from(r"C:\x\c.jpg"), probe(1)).unwrap();
+        let a = b.add(x("a.jpg"), probe(1)).unwrap();
+        let bad = b.add(x("b.txt"), Err(EngineError::Unsupported)).unwrap();
+        let c = b.add(x("c.jpg"), probe(1)).unwrap();
         let stems = b.final_stems(&uniform("kunde"), Lang::De);
         assert_eq!(stems[&a].as_deref(), Some("kunde-01"));
         assert_eq!(stems[&bad], None);
@@ -621,10 +628,10 @@ mod tests {
     fn added_image_gets_next_number() {
         use crate::i18n::Lang;
         let mut b = Batch::default();
-        let a = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
-        let c = b.add(PathBuf::from(r"C:\x\c.jpg"), probe(1)).unwrap();
+        let a = b.add(x("a.jpg"), probe(1)).unwrap();
+        let c = b.add(x("c.jpg"), probe(1)).unwrap();
         b.get_mut(a).unwrap().status = done(1);
-        let d = b.add(PathBuf::from(r"C:\x\d.jpg"), probe(1)).unwrap();
+        let d = b.add(x("d.jpg"), probe(1)).unwrap();
         let stems = b.final_stems(&uniform("kunde"), Lang::De);
         assert_eq!((stems[&a].as_deref(), stems[&c].as_deref(), stems[&d].as_deref()), (Some("kunde-01"), Some("kunde-02"), Some("kunde-03")));
     }
@@ -634,10 +641,10 @@ mod tests {
         use crate::i18n::Lang;
         use crate::settings::Target;
         let mut b = Batch::default();
-        let a = b.add(PathBuf::from(r"C:\x\IMG_2001.jpg"), probe(1)).unwrap();
+        let a = b.add(x("IMG_2001.jpg"), probe(1)).unwrap();
         let rules = crate::naming::NameRules { prefix: "Mueller".into(), search: "IMG_".into(), ..Default::default() };
         let planned = b.planned_outputs(&default_settings(), Target::Suffix, &rules, Lang::De);
-        assert_eq!(planned, vec![(a, PathBuf::from(r"C:\x\IMG_2001.jpg"), PathBuf::from(r"C:\x\mueller-2001.jpg"))]);
+        assert_eq!(planned, vec![(a, x("IMG_2001.jpg"), x("mueller-2001.jpg"))]);
     }
 
     #[test]
@@ -645,7 +652,7 @@ mod tests {
         use crate::i18n::Lang;
         use crate::settings::Target;
         let mut b = Batch::default();
-        let a = b.add(PathBuf::from(r"C:\x\foto.jpg"), probe(1)).unwrap();
+        let a = b.add(x("foto.jpg"), probe(1)).unwrap();
         let rules = crate::naming::NameRules { search: "xyz".into(), ..Default::default() };
         let names = b.preview_names(&default_settings(), Target::Suffix, &rules, Lang::De);
         assert_eq!(names[&a], "foto-web.jpg", "unveränderter Name bekommt -web wie beim Speichern");
@@ -659,9 +666,9 @@ mod tests {
         use crate::i18n::Lang;
         use crate::settings::Target;
         let mut b = Batch::default();
-        let a = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
+        let a = b.add(x("a.jpg"), probe(1)).unwrap();
         b.get_mut(a).unwrap().status = Status::Done(Outcome {
-            path: Some(PathBuf::from(r"C:\x\web\kunde-02.jpg")),
+            path: Some(x("web/kunde-02.jpg")),
             width: 1,
             height: 1,
             bytes: 1,
@@ -675,7 +682,7 @@ mod tests {
     #[test]
     fn changing_rules_reopens_done_items() {
         let mut b = Batch::default();
-        let a = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
+        let a = b.add(x("a.jpg"), probe(1)).unwrap();
         b.get_mut(a).unwrap().status = done(1);
         b.rules_changed();
         assert_eq!(b.get(a).unwrap().status, Status::Pending);
@@ -685,7 +692,7 @@ mod tests {
     fn kept_old_file_is_named_in_the_message() {
         crate::i18n::set_lang(crate::i18n::Lang::De);
         assert_eq!(
-            old_file_kept_message(Path::new(r"C:\x\web\kachelofen.jpg")),
+            old_file_kept_message(&x("web/kachelofen.jpg")),
             "alte Datei kachelofen.jpg liegt noch im Zielordner"
         );
     }
@@ -693,22 +700,22 @@ mod tests {
     #[test]
     fn ids_are_not_reused_after_clearing() {
         let mut b = Batch::default();
-        let first = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
+        let first = b.add(x("a.jpg"), probe(1)).unwrap();
         b.clear();
         assert!(b.items.is_empty());
-        let second = b.add(PathBuf::from(r"C:\x\b.jpg"), probe(1)).unwrap();
+        let second = b.add(x("b.jpg"), probe(1)).unwrap();
         assert_ne!(first, second);
     }
 
     fn replaced_outcome() -> Outcome {
-        Outcome { path: Some(PathBuf::from(r"C:\x\a.jpg")), width: 1, height: 1, bytes: 5, message: None, replaced: true }
+        Outcome { path: Some(x("a.jpg")), width: 1, height: 1, bytes: 5, message: None, replaced: true }
     }
 
     #[test]
     fn replaced_images_stay_final() {
         let mut b = Batch::default();
-        let replaced = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
-        let plain = b.add(PathBuf::from(r"C:\x\b.jpg"), probe(1)).unwrap();
+        let replaced = b.add(x("a.jpg"), probe(1)).unwrap();
+        let plain = b.add(x("b.jpg"), probe(1)).unwrap();
         b.finish(replaced, Ok(replaced_outcome()));
         b.finish(plain, Ok(Outcome { replaced: false, ..replaced_outcome() }));
         b.defaults_changed();
@@ -722,7 +729,7 @@ mod tests {
     #[test]
     fn finish_records_errors() {
         let mut b = Batch::default();
-        let id = b.add(PathBuf::from(r"C:\x\a.jpg"), probe(1)).unwrap();
+        let id = b.add(x("a.jpg"), probe(1)).unwrap();
         b.finish(id, Err("kaputt".into()));
         assert_eq!(b.get(id).unwrap().status, Status::Failed("kaputt".into()));
     }

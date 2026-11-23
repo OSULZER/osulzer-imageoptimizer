@@ -9,7 +9,17 @@ pub type Version = (u32, u32, u32);
 
 /// Adresse der neuesten Veröffentlichung.
 pub const LATEST_URL: &str = "https://api.github.com/repos/OSULZER/osulzer-imageoptimizer/releases/latest";
-const EXE_NAME: &str = "osulzer-imageoptimizer.exe";
+/// Name der Programmdatei für dieses System im Release (dazu `<name>.sig`).
+/// Der Mac bekommt eine Universal-Datei für Intel und Apple Silicon; sie ersetzt die Datei in der `.app`.
+pub const EXE_NAME: &str = if cfg!(windows) {
+    "osulzer-imageoptimizer.exe"
+} else if cfg!(target_os = "macos") {
+    "osulzer-imageoptimizer-macos"
+} else if cfg!(all(target_os = "linux", target_arch = "aarch64")) {
+    "osulzer-imageoptimizer-linux-arm64"
+} else {
+    "osulzer-imageoptimizer-linux-x86_64"
+};
 /// Höchstens so oft fragt das Programm nach Updates.
 const INTERVAL_SECS: u64 = 24 * 60 * 60;
 
@@ -108,7 +118,7 @@ pub fn download_verified(r: &Release, public_key: &str, dest: &Path) -> Result<(
     }
     let mut tmp = dest.as_os_str().to_owned();
     tmp.push(".part");
-    std::fs::write(&tmp, &exe).map_err(|e| {
+    std::fs::write(&tmp, &exe).and_then(|()| make_executable(Path::new(&tmp))).map_err(|e| {
         let _ = std::fs::remove_file(&tmp);
         e.to_string()
     })?;
@@ -116,4 +126,16 @@ pub fn download_verified(r: &Release, public_key: &str, dest: &Path) -> Result<(
         let _ = std::fs::remove_file(&tmp);
         e.to_string()
     })
+}
+
+/// Unter macOS und Linux braucht die neue Programmdatei das Ausführrecht.
+pub fn make_executable(file: &Path) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(file, std::fs::Permissions::from_mode(0o755))?;
+    }
+    #[cfg(not(unix))]
+    let _ = file;
+    Ok(())
 }
