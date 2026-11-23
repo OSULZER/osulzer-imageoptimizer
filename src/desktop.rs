@@ -342,7 +342,8 @@ pub fn mac_registered_exe(document: &str) -> Option<PathBuf> {
 
 /// `Info.plist` des App-Pakets für diese Version.
 pub fn mac_info_plist(version: &str) -> String {
-    MAC_INFO_PLIST.replace("{version}", version)
+    // Unter Windows checkt Git die Vorlage je nach Einstellung mit CRLF aus.
+    MAC_INFO_PLIST.replace("\r\n", "\n").replace("{version}", version)
 }
 
 #[cfg(test)]
