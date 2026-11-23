@@ -36,10 +36,11 @@ cargo run --example keygen
 ### GitHub repository settings
 
 - **About → Description:** Make camera photos web-ready with a right-click: resize, compress, rename for SEO
-  and embed AI-written alt texts. Free Windows tool with command line and MCP server for AI agents.
-- **About → Website:** `https://github.com/OSULZER/osulzer-imageoptimizer/releases/latest`
-- **About → Topics:** `image-optimization` `image-compression` `webp` `jpeg` `seo` `alt-text` `wordpress`
-  `windows` `context-menu` `rust` `egui` `mcp` `mcp-server` `ai` `ollama` `claude`
+  and embed AI-written alt texts. Free for Windows, macOS and Linux, with command line and MCP server for AI
+  agents. By OSULZER – osulzer.at
+- **About → Website:** `https://www.osulzer.at`
+- **About → Topics:** `image-optimization` `image-compression` `webp` `jpeg` `png` `seo` `alt-text` `wordpress`
+  `windows` `macos` `linux` `context-menu` `rust` `egui` `mcp` `mcp-server` `ai` `ollama` `claude`
 - **Settings → General → Social preview:** upload `docs/images/social-preview.jpg` (1280×640).
 
 ### 3. Publish the public code

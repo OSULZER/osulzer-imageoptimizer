@@ -9,6 +9,8 @@ Macht Kamerafotos per Rechtsklick webtauglich: Bilder im Explorer markieren, Rec
 „Optimieren“ klicken. Die Ergebnisse landen im Unterordner `web` neben den Originalen, die
 Originale bleiben unverändert.
 
+Ein kostenloses Werkzeug von [OSULZER](https://www.osulzer.at) für Windows, macOS und Linux.
+
 - Verkleinern auf eine längste Kante (nie vergrößern), JPEG, PNG oder WebP
 - Qualität und optional eine maximale Dateigröße
 - PNG: bei Qualität 100 verlustfrei, darunter mit reduzierter Farbpalette (oft 60–80 % kleiner)
@@ -144,3 +146,7 @@ Abnahme von Hand: [docs/PRUEFLISTE.md](docs/PRUEFLISTE.md).
 Apache-2.0 mit der „Commons Clause“: Nutzung, auch gewerblich, Änderung und Weitergabe sind erlaubt; den
 ImageOptimizer selbst oder eine Dienstleistung, die im Wesentlichen daraus besteht, zu verkaufen, ist nicht
 erlaubt. Der Name „OSULZER“ ist nicht mitlizenziert. Details in [LICENSE](LICENSE) und [NOTICE](NOTICE).
+
+---
+
+Entwickelt von [OSULZER](https://www.osulzer.at).

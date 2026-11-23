@@ -8,7 +8,7 @@ Make camera photos web-ready with a right-click: select images in Explorer, righ
 **ImageOptimizer**. A window lists the images; pick a preset and click **Optimize**. Results go to a `web`
 subfolder next to the originals, which stay untouched.
 
-A free tool by OSULZER for Windows, macOS and Linux.
+A free tool by [OSULZER](https://www.osulzer.at) for Windows, macOS and Linux.
 
 ## Features
 
@@ -107,3 +107,7 @@ software, but you may not sell it or a service whose value derives substantially
 [NOTICE](NOTICE). Third-party licenses are listed in `THIRD-PARTY-LICENSES.html` in every release.
 
 This software is based in part on the work of the Independent JPEG Group.
+
+---
+
+Made by [OSULZER](https://www.osulzer.at).
