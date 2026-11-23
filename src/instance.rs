@@ -30,10 +30,11 @@ pub fn acquire(dir: &Path, name: &str, paths: &[PathBuf]) -> std::io::Result<Rol
                 for conn in listener.incoming() {
                     let Ok(mut conn) = conn else { continue };
                     let mut text = String::new();
-                    if conn.read_to_string(&mut text).is_err() {
-                        continue;
-                    }
-                    let batch: Vec<PathBuf> = text.lines().filter(|l| !l.is_empty()).map(PathBuf::from).collect();
+                    // Auch bei einem Lesefehler weitergeben: Das Fenster soll nach vorne kommen, und
+                    // vollständig gelesene Zeilen gehen nicht verloren.
+                    let _ = conn.read_to_string(&mut text);
+                    let complete = &text[..text.rfind('\n').map_or(0, |i| i + 1)];
+                    let batch: Vec<PathBuf> = complete.lines().filter(|l| !l.is_empty()).map(PathBuf::from).collect();
                     if tx.send(batch).is_err() {
                         break;
                     }
@@ -57,7 +58,10 @@ fn socket_name(name: &str) -> std::io::Result<interprocess::local_socket::Name<'
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 
 fn hand_over(name: &str, paths: &[PathBuf]) -> std::io::Result<()> {
-    let message: String = paths.iter().map(|p| format!("{}\n", p.to_string_lossy())).collect();
+    // Immer mindestens ein Zeilenende: Eine Verbindung ganz ohne Daten meldet Windows beim Empfänger
+    // mitunter als Fehler statt als leere Nachricht, dann käme das Fenster nicht nach vorne.
+    let mut message: String = paths.iter().map(|p| format!("{}\n", p.to_string_lossy())).collect();
+    message.push('\n');
     let deadline = Instant::now() + CONNECT_TIMEOUT;
     loop {
         match Stream::connect(socket_name(name)?) {

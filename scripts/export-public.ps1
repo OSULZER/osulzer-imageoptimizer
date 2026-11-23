@@ -5,21 +5,34 @@
   Exportiert HEAD ohne interne Planungsdokumente (docs/superpowers, .superpowers) in einen leeren Ordner,
   bricht ab, wenn LAN-Adressen, Benutzerpfade oder E-Mail-Adressen darin vorkommen, und legt dort ein
   Git-Repository mit genau einem Commit an. Gepusht wird nicht.
+  Ist der Zielordner schon ein öffentliches Repository (aus einem früheren Export), wird sein Inhalt durch den
+  neuen Stand ersetzt und als weiterer Commit angehängt; die bisherige öffentliche Historie bleibt.
 .EXAMPLE
   powershell -File scripts/export-public.ps1 -Target ..\osulzer-imageoptimizer-public
+.EXAMPLE
+  powershell -File scripts/export-public.ps1 -Target ..\osulzer-imageoptimizer-public -Message "Fix: ..."
 #>
 param(
-    [Parameter(Mandatory = $true)][string]$Target
+    [Parameter(Mandatory = $true)][string]$Target,
+    [string]$Message
 )
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 
-if (Test-Path $Target) {
+$update = Test-Path (Join-Path $Target '.git')
+if ($update) {
+    if (git -C $Target status --porcelain) { throw "Target repository has uncommitted changes: $Target" }
+} elseif (Test-Path $Target) {
     if (@(Get-ChildItem -LiteralPath $Target -Force).Count -gt 0) { throw "Target folder is not empty: $Target" }
 } else {
     New-Item -ItemType Directory -Path $Target | Out-Null
 }
 $Target = (Resolve-Path $Target).Path
+# Erst in einen eigenen Ordner exportieren und prüfen, damit das Ziel bei einem Treffer unverändert bleibt.
+$final = $Target
+$Target = Join-Path $env:TEMP "osulzer-export-stage-$PID"
+if (Test-Path $Target) { Remove-Item -Recurse -Force $Target }
+New-Item -ItemType Directory -Path $Target | Out-Null
 
 $version = (Select-String -Path (Join-Path $repo 'Cargo.toml') -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
 
@@ -65,17 +78,34 @@ if ($utf16) { $utf16 | ForEach-Object { Write-Host "UTF-16 file: $($_.FullName)"
 $hits = Get-ChildItem -LiteralPath $Target -Recurse -File | Select-String -Pattern $patterns
 if ($hits) {
     $hits | ForEach-Object { Write-Host ("{0}:{1}: {2}" -f $_.Path, $_.LineNumber, $_.Line.Trim()) }
+    Remove-Item -Recurse -Force $Target
     throw 'Private data found, nothing committed. Fix the files above and run again.'
 }
 
-git -C $Target init -q -b main
+# Geprüften Stand ins Ziel übernehmen: dort alles außer .git ersetzen.
+Get-ChildItem -LiteralPath $final -Force | Where-Object { $_.Name -ne '.git' } | Remove-Item -Recurse -Force
+Get-ChildItem -LiteralPath $Target -Force | Move-Item -Destination $final
+Remove-Item -Recurse -Force $Target
+$Target = $final
+
+if (-not $update) { git -C $Target init -q -b main }
 git -C $Target add -A
-$message = @"
-OSULZER ImageOptimizer $version
+if (-not (git -C $Target status --porcelain)) {
+    Write-Host "No changes compared to the last export in $Target"
+    return
+}
+if (-not $Message) { $Message = "OSULZER ImageOptimizer $version" }
+$commitMessage = @"
+$Message
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 "@
-git -C $Target commit -q -m $message
+git -C $Target commit -q -m $commitMessage
 if ($LASTEXITCODE -ne 0) { throw 'git commit failed' }
-Write-Host "Public tree with one commit in $Target"
-Write-Host "Next: git -C `"$Target`" remote add origin <url>; git -C `"$Target`" push -u origin main"
+if ($update) {
+    Write-Host "New commit in $Target"
+    Write-Host "Next: git -C `"$Target`" push"
+} else {
+    Write-Host "Public tree with one commit in $Target"
+    Write-Host "Next: git -C `"$Target`" remote add origin <url>; git -C `"$Target`" push -u origin main"
+}
