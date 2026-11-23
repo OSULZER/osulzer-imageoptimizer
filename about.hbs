@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Third-party licenses – OSULZER ImageOptimizer</title>
+<style>body{font-family:system-ui,sans-serif;max-width:60rem;margin:2rem auto;padding:0 1rem;line-height:1.4}
+pre{white-space:pre-wrap;background:#f4f4f4;padding:1rem;font-size:.85rem}</style></head>
+<body>
+<h1>Third-party licenses</h1>
+<p>OSULZER ImageOptimizer bundles the following libraries.</p>
+<h2>Overview</h2>
+<ul>
+{{#each overview}}<li>{{name}} ({{count}})</li>
+{{/each}}
+</ul>
+<h2>License texts</h2>
+{{#each licenses}}
+<h3>{{name}}</h3>
+<p>Used by: {{#each used_by}}{{crate.name}} {{crate.version}}{{#unless @last}}, {{/unless}}{{/each}}</p>
+<pre>{{text}}</pre>
+{{/each}}
+</body></html>

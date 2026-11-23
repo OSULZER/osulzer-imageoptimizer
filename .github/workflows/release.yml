@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ilammy/setup-nasm@v1
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check signing key and version
+        shell: pwsh
+        run: |
+          $key = (Get-Content assets/update-public-key.txt -Raw).Trim()
+          if ($key -eq 'PLACEHOLDER' -or $key.Length -lt 40) {
+            Write-Error "assets/update-public-key.txt holds no real key. Run 'cargo run --example keygen' first (see docs/RELEASE.md)."
+            exit 1
+          }
+          if (-not $env:UPDATE_SIGNING_KEY) { Write-Error "Secret UPDATE_SIGNING_KEY is missing."; exit 1 }
+          $version = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          if ("v$version" -ne $env:TAG) { Write-Error "Tag $env:TAG does not match Cargo.toml version $version."; exit 1 }
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+          TAG: ${{ github.ref_name }}
+
+      - name: Tests
+        run: cargo test --locked
+
+      - name: Build
+        run: cargo build --release --locked
+
+      - name: Third-party licenses
+        run: |
+          cargo install cargo-about --locked --features cli
+          cargo about generate about.hbs -o THIRD-PARTY-LICENSES.html
+
+      - name: Sign
+        shell: pwsh
+        run: cargo run --release --locked --example sign -- target/release/osulzer-imageoptimizer.exe $env:TAG
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+          TAG: ${{ github.ref_name }}
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            target/release/osulzer-imageoptimizer.exe
+            target/release/osulzer-imageoptimizer.exe.sig
+            THIRD-PARTY-LICENSES.html

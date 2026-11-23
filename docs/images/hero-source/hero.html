@@ -1,0 +1,102 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OSULZER ImageOptimizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Instrument+Sans:wght@400;500;600&display=block" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1280px; height: 640px; overflow: hidden; }
+body { font-family: "Instrument Sans", system-ui, sans-serif; position: relative; }
+.display { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; letter-spacing: -.035em; }
+ul { list-style: none; display: grid; }
+li { display: grid; grid-template-columns: 22px 1fr; align-items: start; line-height: 1.35; }
+li svg { margin-top: 3px; }
+.app { position: absolute; border-radius: 10px; overflow: hidden; }
+.app img { display: block; width: 100%; }
+.ai { position: absolute; padding: 15px 18px 14px; background: #fff; color: #1e1720; border-radius: 12px; box-shadow: 0 24px 50px -18px rgba(40, 10, 35, .6), 0 0 0 2px #e83e91; }
+.ai::before { content: ""; position: absolute; top: -9px; left: 70px; width: 16px; height: 16px; background: #fff; transform: rotate(45deg); box-shadow: -2px -2px 0 0 #e83e91; }
+.ai .head { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #6e6470; }
+.ai .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 7px; border-radius: 999px; background: #e83e91; color: #fff; font-weight: 600; font-size: 13px; }
+.ai dl { margin-top: 10px; display: grid; grid-template-columns: 78px 1fr; row-gap: 6px; column-gap: 10px; font-size: 13.5px; line-height: 1.35; }
+.ai dt { color: #6e6470; }
+.ai dd.title { font-weight: 600; }
+.ai dd.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ai code { font-family: "Instrument Sans", sans-serif; color: #6b2d5c; font-weight: 600; }
+.tile { position: absolute; width: 112px; padding: 7px 7px 6px; background: rgba(255,255,255,.95); border: 1px solid #c9d7ea; border-radius: 6px; box-shadow: 0 0 0 2px #cfe3fb inset; font: 11.5px "Segoe UI", system-ui, sans-serif; color: #1b1b1b; text-align: center; }
+.tile .thumb { height: 62px; border-radius: 3px; background: url(thumb.jpg) center/cover; margin-bottom: 5px; }
+.menu { position: absolute; width: 186px; padding: 4px; background: #fbfbfb; border: 1px solid #d9d9d9; border-radius: 8px; box-shadow: 0 18px 40px -12px rgba(0,0,0,.4); font: 13px "Segoe UI", system-ui, sans-serif; color: #1b1b1b; }
+.menu div { display: flex; align-items: center; gap: 9px; height: 28px; padding: 0 10px; border-radius: 4px; }
+.menu .sep { height: 1px; padding: 0; margin: 3px 6px; background: #e3e3e3; border-radius: 0; }
+.menu .ico { width: 15px; height: 15px; flex: none; }
+.menu .hit { background: #e83e91; color: #fff; font-weight: 600; }
+.menu .hit img { width: 17px; height: 17px; border-radius: 4px; box-shadow: 0 0 0 1px rgba(255,255,255,.6); }
+.menu .dim { color: #6b6b6b; }
+.cursor { position: absolute; width: 20px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.4)); }
+.size { position: absolute; display: grid; grid-template-columns: auto auto auto 1fr; align-items: baseline; column-gap: 12px; }
+.size .from { font-size: 32px; text-decoration: line-through; text-decoration-thickness: 3px; }
+.size .arrow { align-self: center; }
+.size .to { font-size: 44px; color: #e83e91; }
+.size .note { grid-column: 1 / -1; font-size: 14px; margin-top: 2px; }
+body { background: radial-gradient(900px 640px at 100% 100%, #3b1a3c, transparent 65%), radial-gradient(700px 500px at 0% 0%, #2a1630, transparent 60%), #160f18; color: #f7eef4; }
+.copy { position: absolute; left: 64px; top: 52px; width: 520px; }
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand img { width: 64px; height: 64px; border-radius: 15px; box-shadow: 0 10px 24px -10px rgba(107,45,92,.6); }
+.brand .o { font-size: 21px; font-weight: 600; letter-spacing: .02em; color: #b9a8b8; }
+h1 { font-size: 76px; line-height: .95; margin-top: 18px; }
+.tag { font-size: 34px; color: #f6a8cf; margin-top: 8px; line-height: 1; }
+.lede { font-size: 18px; line-height: 1.45; margin-top: 18px; width: 470px; color: #b9a8b8; }
+ul { margin-top: 18px; gap: 8px; font-size: 16px; }
+li.lead { font-weight: 600; }
+.foot { position: absolute; left: 64px; bottom: 40px; font-size: 14px; color: #b9a8b8; }
+.foot b { color: #f7eef4; }
+.app { left: 620px; top: 46px; width: 620px; box-shadow: 0 30px 70px -20px rgba(0,0,0,.8), 0 0 0 1px rgba(232,62,145,.45); }
+.flow { position: absolute; left: 806px; top: 252px; width: 440px; padding: 14px 16px; border-radius: 14px;
+  background: #241a27; box-shadow: 0 24px 50px -16px rgba(0,0,0,.7), 0 0 0 1px rgba(232,62,145,.55); color: #f7eef4; }
+.flow .row { display: grid; grid-template-columns: 54px 1fr; column-gap: 12px; align-items: center; }
+.flow .pic { width: 54px; height: 40px; border-radius: 6px; background: url(thumb.jpg) center/cover; }
+.flow .before .name { font-size: 15px; font-weight: 600; color: #b9a8b8; text-decoration: line-through; text-decoration-color: rgba(185,168,184,.6); }
+.flow .before .meta { font-size: 12.5px; color: #8f8091; margin-top: 2px; }
+.flow .btn { display: inline-flex; align-items: center; gap: 7px; padding: 5px 13px; border-radius: 8px; margin-bottom: 12px;
+  background: #e83e91; color: #fff; font-weight: 600; font-size: 14px; box-shadow: 0 6px 16px -6px rgba(232,62,145,.8); }
+.flow .down { display: block; margin: 2px 0 2px 0; }
+.flow .after { align-items: start; margin: 0 -8px; padding: 10px 8px; border-radius: 10px; background: rgba(232,62,145,.10); box-shadow: inset 0 0 0 1px rgba(232,62,145,.35); }
+.flow .props { display: grid; grid-template-columns: 74px 1fr; row-gap: 5px; column-gap: 10px; font-size: 13px; line-height: 1.35; }
+.flow .props dt { color: #9d8e9f; }
+.flow .props dd { color: #f7eef4; }
+.flow .props dd.name { color: #f6a8cf; font-weight: 600; }
+.flow .props dd.title { font-weight: 600; }
+.flow .props dd.desc { color: #d6c7d4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+</style></head><body>
+<section class="copy"><div class="brand"><img src="icon.png" alt=""><span class="o">OSULZER</span></div>
+<h1 class="display">ImageOptimizer</h1><div class="tag display">Minify, rename and describe.</div>
+<p class="lede">Turn heavy camera photos into fast, well-described, search-friendly web images, straight from Windows Explorer.</p><ul><li class=lead><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#e83e91"/><path d="M4 7.2l2 2 4-4.4" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>AI writes alt text, title and description for each photo</li><li><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#e83e91"/><path d="M4 7.2l2 2 4-4.4" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>6&nbsp;MB camera photos shrink to about 300&nbsp;KB in seconds</li><li><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#e83e91"/><path d="M4 7.2l2 2 4-4.4" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>SEO file names: one name for all, numbered, find and replace</li><li><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#e83e91"/><path d="M4 7.2l2 2 4-4.4" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Local AI or OpenAI, Claude, Gemini, OpenRouter, Mistral</li><li><svg width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="#e83e91"/><path d="M4 7.2l2 2 4-4.4" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Command line and MCP server for scripts and AI agents</li></ul></section>
+<p class="foot"><b>Free</b> for Windows 10 and 11, in English and German</p>
+<div class="app"><img src="app-ai.png" alt=""></div>
+<div class="flow">
+  <div class="btn"><svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 1.5l1.6 4.2 4.4.3-3.4 2.8 1.1 4.3L8 10.7l-3.7 2.4 1.1-4.3L2 6l4.4-.3z" fill="#fff"/></svg>AI description</div>
+  <div class="row before">
+    <div class="pic"></div>
+    <div><div class="name">IMG_2643.JPG</div><div class="meta">6.2 MB, no title, no description</div></div>
+  </div>
+  <svg class="down" width="54" height="30" viewBox="0 0 54 30"><path d="M27 2v22M20 17l7 8 7-8" stroke="#e83e91" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <div class="row after">
+    <div class="pic"></div>
+    <dl class="props">
+      <dt>Name</dt><dd class="name">evening-sun-over-tyrol-mountains.jpg</dd>
+      <dt>Title</dt><dd class="title">Evening Sun Over the Mountains of Tyrol, Austria</dd>
+      <dt>Description</dt><dd class="desc">A stylized illustration of an evening sky in Tyrol, Austria, with a glowing sun above rolling purple mountain ridges.</dd>
+    </dl>
+  </div>
+</div>
+<div class="tile" style="left:560px;top:402px"><div class="thumb"></div>IMG_2643.JPG</div>
+<div class="menu" style="left:650px;top:452px">
+<div><svg class="ico" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="2" fill="none" stroke="#555" stroke-width="1.2"/></svg>Open</div>
+<div><svg class="ico" viewBox="0 0 16 16"><path d="M3 12.5l1-3 6-6 2 2-6 6z" fill="none" stroke="#555" stroke-width="1.2"/></svg>Edit</div>
+<div class="sep"></div><div class="hit"><img src="icon.png" alt="">ImageOptimizer</div><div class="sep"></div>
+<div class="dim"><svg class="ico" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5" fill="none" stroke="#777" stroke-width="1.2"/><path d="M8 7v4M8 5v.5" stroke="#777" stroke-width="1.3"/></svg>Properties</div></div>
+<svg class="cursor" style="left:790px;top:528px" viewBox="0 0 22 32"><path d="M2 2v24l6-6 4 10 4-2-4-9h8z" fill="#fff" stroke="#111" stroke-width="1.6" stroke-linejoin="round"/></svg>
+<div class="size display-num" style="left:846px;top:548px;width:394px">
+<span class="from display" style="color:#9a8f9c;text-decoration-color:#9a8f9c88">6&nbsp;MB</span>
+<svg class="arrow" width="44" height="16" viewBox="0 0 44 16"><path d="M2 8h36M32 2l7 6-7 6" stroke="#f6a8cf" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<span class="to display">300&nbsp;KB</span><span></span>
+<span class="note" style="color:#b9a8b8">Typical camera photo, resized and compressed for the web</span></div>
+</body></html>

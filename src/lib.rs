@@ -1,0 +1,20 @@
+//! OSULZER ImageOptimizer: Bilder verkleinern, komprimieren und umwandeln.
+pub mod settings;
+pub mod engine;
+pub mod job;
+pub mod config;
+pub mod instance;
+pub mod shell;
+pub mod state;
+pub mod ui;
+pub mod cli;
+pub mod texts;
+pub mod naming;
+pub mod headless;
+pub mod cli_run;
+pub mod mcp;
+pub mod update;
+pub mod install;
+pub mod ai;
+pub mod migrate;
+pub mod i18n;
