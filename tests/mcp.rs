@@ -90,6 +90,8 @@ fn lists_the_four_tools() {
 fn optimize_images_with_texts_from_the_agent() {
     let dir = tempfile::tempdir().unwrap();
     let src = common::write_jpeg(dir.path(), "IMG_1.jpg", 1600, 1200);
+    // Deutsch festlegen: Umlaute werden je nach Sprache zu „ue“ oder „u“.
+    std::fs::write(dir.path().join("c.json"), r#"{"ui_lang":"de"}"#).unwrap();
     let mut s = Server::start(&dir.path().join("c.json"));
     let reports = s.call(2, "optimize_images", json!({
         "paths": [src.to_str().unwrap()],
